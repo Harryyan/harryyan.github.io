@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Dev, Team Lead</title>
+  
+  <subtitle>Stay Hungry，Stay Foolish</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="https://harryyan.github.io/"/>
+  <updated>2021-08-27T02:21:24.426Z</updated>
+  <id>https://harryyan.github.io/</id>
+  
+  <author>
+    <name>Harry Yan</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Swift函数派发机制</title>
+    <link href="https://harryyan.github.io/2021/08/27/Swift%E5%87%BD%E6%95%B0%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6/"/>
+    <id>https://harryyan.github.io/2021/08/27/Swift函数派发机制/</id>
+    <published>2021-08-27T01:51:40.000Z</published>
+    <updated>2021-08-27T02:21:24.426Z</updated>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;一个令人困惑的小问题&quot;&gt;&lt;a href=&quot;#一个令人困惑的小问题&quot; class=&quot;headerlink&quot; title=&quot;一个令人困惑的小问题&quot;&gt;&lt;/a&gt;一个令人困惑的小问题&lt;/h1&gt;&lt;p&gt;大家请看下面这段代码(&lt;em&gt;摘自objc.io twitter的swift quiz&lt;/em&gt;)&lt;/p&gt;
+&lt;figure class=&quot;highlight plaintext&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;3&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;4&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;5&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;6&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;7&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;8&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;9&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;10&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;11&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;12&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;13&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;14&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;15&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;16&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;17&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;protocol Drawing &amp;#123;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  func render()&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;extension Drawing &amp;#123;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  func circle() &amp;#123; p rint(&amp;quot;protocol&amp;quot;)&amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  func render() &amp;#123; circle()&amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;class SVG: Drawing &amp;#123;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;  func circle()&amp;#123; print(&amp;quot;class&amp;quot;) &amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&amp;#125;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;SVG().render()&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;// what&amp;#x27;s the output?&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;
+&lt;p&gt;请给出你的答案😄&lt;/p&gt;
+    
+    </summary>
+    
+      <category term="底层原理" scheme="https://harryyan.github.io/categories/%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/"/>
+    
+      <category term="开发基础" scheme="https://harryyan.github.io/categories/%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/%E5%BC%80%E5%8F%91%E5%9F%BA%E7%A1%80/"/>
+    
+    
+      <category term="函数" scheme="https://harryyan.github.io/tags/%E5%87%BD%E6%95%B0/"/>
+    
+      <category term="底层原理" scheme="https://harryyan.github.io/tags/%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>iOS App启动的奥秘</title>
+    <link href="https://harryyan.github.io/2021/04/20/iOS%20App%E5%90%AF%E5%8A%A8%E7%9A%84%E5%A5%A5%E7%A7%98/"/>
+    <id>https://harryyan.github.io/2021/04/20/iOS App启动的奥秘/</id>
+    <published>2021-04-19T21:57:01.000Z</published>
+    <updated>2021-08-27T02:24:43.119Z</updated>
+    
+    <summary type="html">
+    
+      &lt;p&gt;随着智能手机，平板在中国普及率的上升，人们越来越依赖移动设备进行娱乐、消费，由此催生出的App更是层出不穷。根据苹果2019年2月的数据，目前AppStore上的App数量已经超过220万，比2018年同期增长了近10万个App。2015年6月到2016年6月可谓是App发展的高速时期，仅仅一年时间就增长了50万个App；同时期也是中国**互联网+**的黄金时期，各种创业项目，平台推出了各式各样的移动App产品。&lt;/p&gt;
+&lt;p&gt;那么，随着App的爆发式增长，我们越来越清晰地发现：大多数App是无法长期停留在用户手机里的。今天这篇文章，我们将从一个&lt;strong&gt;开发者&lt;/strong&gt;的角度来思考：如何提升用户体验，让我们的App在同类产品中脱颖而出，最终能够长期稳定的存在于用户手机之中。&lt;/p&gt;
+&lt;div class=&quot;note warning&quot;&gt;&lt;p&gt;每当我们说到用户体验，我们往往想到的是优化界面，交互方式等。这些固然重要，但这更多的是产品和UX的职责。作为开发，我们更需要考虑他们无法完成的事情，更加高端的事情，比方说：**优化App的启动流程**。&lt;/p&gt;&lt;/div&gt;
+    
+    </summary>
+    
+      <category term="开发基础" scheme="https://harryyan.github.io/categories/%E5%BC%80%E5%8F%91%E5%9F%BA%E7%A1%80/"/>
+    
+      <category term="优化" scheme="https://harryyan.github.io/categories/%E5%BC%80%E5%8F%91%E5%9F%BA%E7%A1%80/%E4%BC%98%E5%8C%96/"/>
+    
+      <category term="底层原理" scheme="https://harryyan.github.io/categories/%E5%BC%80%E5%8F%91%E5%9F%BA%E7%A1%80/%E4%BC%98%E5%8C%96/%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/"/>
+    
+    
+      <category term="dyld" scheme="https://harryyan.github.io/tags/dyld/"/>
+    
+      <category term="Mach-O" scheme="https://harryyan.github.io/tags/Mach-O/"/>
+    
+      <category term="Runtime" scheme="https://harryyan.github.io/tags/Runtime/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>《格鲁夫给经理人的第一课》读书笔记</title>
+    <link href="https://harryyan.github.io/2020/07/23/%E6%A0%BC%E9%B2%81%E5%A4%AB%E7%BB%99%E7%BB%8F%E7%90%86%E4%BA%BA%E7%9A%84%E7%AC%AC%E4%B8%80%E8%AF%BE%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/"/>
+    <id>https://harryyan.github.io/2020/07/23/格鲁夫给经理人的第一课读书笔记/</id>
+    <published>2020-07-23T07:22:27.000Z</published>
+    <updated>2021-08-26T22:13:34.081Z</updated>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;背景&quot;&gt;&lt;a href=&quot;#背景&quot; class=&quot;headerlink&quot; title=&quot;背景&quot;&gt;&lt;/a&gt;背景&lt;/h1&gt;&lt;p&gt;在职场，越往上走，越觉得管理是门学问。很好奇我的开发经理(Dev Manager)是如何工作的，他们每年给我们这些 “一线开发” 制定KPI，那他们的KPI是如何定义的，他们的产出在哪里？平时他们除了开会，就是回复邮件，这些真的能带来产出么？带着这些疑问，我淘到了一本英特尔前CEO格鲁夫写的一本 《High Output Management》, 里面详细介绍了如何衡量一个经理人的产出以及如何提升其产出的方法，令我感触颇多。这本书也帮助我理解了公司和团队日常开不同会议的目的和作用，以及经理人在其中的角色。&lt;/p&gt;
+    
+    </summary>
+    
+      <category term="读书笔记" scheme="https://harryyan.github.io/categories/%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/"/>
+    
+    
+      <category term="管理" scheme="https://harryyan.github.io/tags/%E7%AE%A1%E7%90%86/"/>
+    
+      <category term="Team Work" scheme="https://harryyan.github.io/tags/Team-Work/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>开篇</title>
+    <link href="https://harryyan.github.io/2019/04/19/%E5%BC%80%E7%AF%87%E5%AF%84%E8%AF%AD/"/>
+    <id>https://harryyan.github.io/2019/04/19/开篇寄语/</id>
+    <published>2019-04-19T09:35:41.000Z</published>
+    <updated>2021-08-26T22:13:34.080Z</updated>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;关于我&quot;&gt;&lt;a href=&quot;#关于我&quot; class=&quot;headerlink&quot; title=&quot;关于我&quot;&gt;&lt;/a&gt;关于我&lt;/h1&gt;&lt;p&gt;我是一名移动开发者，也做Web和混合开发，目前有6年的开发经验。&lt;/p&gt;
+&lt;p&gt;最早接触的是iOS开发， 那是在大三尾巴上的时候，那个暑假去魅族实习，挣了万把块钱，就”败了”一台MBP 13。当时买它的主要原因还不是想做Apple的开发，是源于我们的Team Lead。他从微软回来后加盟的魅族，也在微软做过Scrum Master, 带领团队。他提到在美国，老美们都用Mac开发，说它是开发利器，加上我们当时做Ruby on Rails，每次看他”秀”终端操作和工具的时候，总觉得那才是一个开发应该有的样子。当然你用其他系统一样可以开发，一样可以使用终端操作。除此之外，我还想学iOS开发，毕竟魅族当时也被誉为”中国的Apple”，我们的产品经理也是苹果粉，天天在爱范儿关注着各类信息。就这样，在他们的持续熏陶下，我踏上了iOS开发的道路。&lt;/p&gt;
+    
+    </summary>
+    
+      <category term="知识体系" scheme="https://harryyan.github.io/categories/%E7%9F%A5%E8%AF%86%E4%BD%93%E7%B3%BB/"/>
+    
+      <category term="软实力" scheme="https://harryyan.github.io/categories/%E7%9F%A5%E8%AF%86%E4%BD%93%E7%B3%BB/%E8%BD%AF%E5%AE%9E%E5%8A%9B/"/>
+    
+    
+      <category term="自我总结" scheme="https://harryyan.github.io/tags/%E8%87%AA%E6%88%91%E6%80%BB%E7%BB%93/"/>
+    
+  </entry>
+  
+</feed>
