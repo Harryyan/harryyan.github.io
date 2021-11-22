@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+  <link rel="mask-icon" href="/images/favicon.ico" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.3/css/all.min.css" integrity="sha256-2H3fkXt6FEmrReK448mDVGKb3WW2ZZw35gI7vqHOE4Y=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"harryyan.github.io","root":"/","images":"/images","scheme":"Gemini","version":"8.7.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":true,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
+<meta name="description" content="一个令人困惑的小问题大家请看下面这段代码(摘自objc.io twitter的swift quiz) 1234567891011121314151617protocol Drawing &amp;#123;  func render()&amp;#125;extension Drawing &amp;#123;  func circle() &amp;#123; p rint(&quot;protocol&quot;)&amp;#125">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Swift函数派发机制">
+<meta property="og:url" content="https://harryyan.github.io/2021/08/27/Swift%E5%87%BD%E6%95%B0%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6/index.html">
+<meta property="og:site_name" content="Team Lead">
+<meta property="og:description" content="一个令人困惑的小问题大家请看下面这段代码(摘自objc.io twitter的swift quiz) 1234567891011121314151617protocol Drawing &amp;#123;  func render()&amp;#125;extension Drawing &amp;#123;  func circle() &amp;#123; p rint(&quot;protocol&quot;)&amp;#125">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1559693318/blogImages/Swift_Dispatch/Screen_Shot_2019-06-05_at_12.06.52_PM_n3inuw.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1559694848/blogImages/Swift_Dispatch/Screen_Shot_2019-06-05_at_8.33.29_AM_nwr7rv.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1559823253/blogImages/Swift_Dispatch/table_fbcuhz.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1560241856/blogImages/Swift_Dispatch/summary_c0azo8.png">
+<meta property="article:published_time" content="2021-08-27T01:51:40.000Z">
+<meta property="article:modified_time" content="2021-11-22T19:25:33.310Z">
+<meta property="article:author" content="Harry Yan">
+<meta property="article:tag" content="函数">
+<meta property="article:tag" content="底层原理">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1559693318/blogImages/Swift_Dispatch/Screen_Shot_2019-06-05_at_12.06.52_PM_n3inuw.png">
+
+
+<link rel="canonical" href="https://harryyan.github.io/2021/08/27/Swift%E5%87%BD%E6%95%B0%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://harryyan.github.io/2021/08/27/Swift%E5%87%BD%E6%95%B0%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6/","path":"2021/08/27/Swift函数派发机制/","title":"Swift函数派发机制"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Swift函数派发机制 | Team Lead</title>
+  
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">Team Lead</h1>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Stay Hungry，Stay Foolish</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li>
+        <li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a></li>
+        <li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签<span class="badge">11</span></a></li>
+        <li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类<span class="badge">11</span></a></li>
+        <li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">5</span></a></li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E4%B8%AA%E4%BB%A4%E4%BA%BA%E5%9B%B0%E6%83%91%E7%9A%84%E5%B0%8F%E9%97%AE%E9%A2%98"><span class="nav-number">1.</span> <span class="nav-text">一个令人困惑的小问题</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6"><span class="nav-number">2.</span> <span class="nav-text">派发机制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B4%E6%8E%A5%E6%B4%BE%E5%8F%91"><span class="nav-number">2.1.</span> <span class="nav-text">直接派发</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E8%A1%A8%E6%B4%BE%E5%8F%91"><span class="nav-number">2.2.</span> <span class="nav-text">函数表派发</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B6%88%E6%81%AF%E6%B4%BE%E5%8F%91"><span class="nav-number">2.3.</span> <span class="nav-text">消息派发</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Swift%E5%A6%82%E4%BD%95%E6%B4%BE%E5%8F%91%E5%87%BD%E6%95%B0"><span class="nav-number">3.</span> <span class="nav-text">Swift如何派发函数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%B9%E8%B1%A1%E7%B1%BB%E5%9E%8B"><span class="nav-number">3.1.</span> <span class="nav-text">对象类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E5%A3%B0%E6%98%8E%E4%BD%8D%E7%BD%AE"><span class="nav-number">3.2.</span> <span class="nav-text">函数声明位置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E5%AE%9A%E6%B4%BE%E5%8F%91%E6%96%B9%E5%BC%8F"><span class="nav-number">3.3.</span> <span class="nav-text">指定派发方式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#final"><span class="nav-number">3.3.1.</span> <span class="nav-text">final</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#dynamic"><span class="nav-number">3.3.2.</span> <span class="nav-text">dynamic</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#objc"><span class="nav-number">3.3.3.</span> <span class="nav-text">@objc</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#inline-or-static"><span class="nav-number">3.3.4.</span> <span class="nav-text">@inline or static</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E5%99%A8%E4%BC%98%E5%8C%96"><span class="nav-number">3.4.</span> <span class="nav-text">编译器优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B4%BE%E5%8F%91%E6%80%BB%E7%BB%93"><span class="nav-number">3.5.</span> <span class="nav-text">派发总结</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E9%80%89%E6%8B%A9%E6%B4%BE%E5%8F%91%E6%96%B9%E5%BC%8F"><span class="nav-number">4.</span> <span class="nav-text">如何选择派发方式</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-overview">
+            <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Harry Yan"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Harry Yan</p>
+  <div class="site-description" itemprop="description">远离平庸的重力</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author site-overview-item animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/Harryyan" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;Harryyan" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:harryyan1238s@gmail.com" title="E-Mail → mailto:harryyan1238s@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.linkedin.com/in/harry-yan-7520a331/" title="LinkedIn → https:&#x2F;&#x2F;www.linkedin.com&#x2F;in&#x2F;harry-yan-7520a331&#x2F;" rel="noopener" target="_blank"><i class="fab fa-linkedin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://harryyan.github.io/Resume" title="Resume → https:&#x2F;&#x2F;harryyan.github.io&#x2F;Resume"><i class="fa fa-file fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license site-overview-item animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdn.jsdelivr.net/npm/@creativecommons/vocabulary@2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+  <a href="https://github.com/harryyan" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://harryyan.github.io/2021/08/27/Swift%E5%87%BD%E6%95%B0%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Harry Yan">
+      <meta itemprop="description" content="远离平庸的重力">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Team Lead">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Swift函数派发机制
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2021-08-27 13:51:40" itemprop="dateCreated datePublished" datetime="2021-08-27T13:51:40+12:00">2021-08-27</time>
+    </span>
+      <span class="post-meta-item">
+        <span class="post-meta-item-icon">
+          <i class="far fa-calendar-check"></i>
+        </span>
+        <span class="post-meta-item-text">更新于</span>
+        <time title="修改时间：2021-11-23 08:25:33" itemprop="dateModified" datetime="2021-11-23T08:25:33+13:00">2021-11-23</time>
+      </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/" itemprop="url" rel="index"><span itemprop="name">底层原理</span></a>
+        </span>
+          ，
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/%E5%BC%80%E5%8F%91%E5%9F%BA%E7%A1%80/" itemprop="url" rel="index"><span itemprop="name">开发基础</span></a>
+        </span>
+    </span>
+
+  
+    <span class="post-meta-break"></span>
+    <span class="post-meta-item" title="本文字数">
+      <span class="post-meta-item-icon">
+        <i class="far fa-file-word"></i>
+      </span>
+      <span class="post-meta-item-text">本文字数：</span>
+      <span>7k</span>
+    </span>
+    <span class="post-meta-item" title="阅读时长">
+      <span class="post-meta-item-icon">
+        <i class="far fa-clock"></i>
+      </span>
+      <span class="post-meta-item-text">阅读时长 &asymp;</span>
+      <span>6 分钟</span>
+    </span>
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <h1 id="一个令人困惑的小问题"><a href="#一个令人困惑的小问题" class="headerlink" title="一个令人困惑的小问题"></a>一个令人困惑的小问题</h1><p>大家请看下面这段代码(<em>摘自objc.io twitter的swift quiz</em>)</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">protocol Drawing &#123;</span><br><span class="line">  func render()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">extension Drawing &#123;</span><br><span class="line">  func circle() &#123; p rint(&quot;protocol&quot;)&#125;</span><br><span class="line">  func render() &#123; circle()&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">class SVG: Drawing &#123;</span><br><span class="line">  func circle()&#123; print(&quot;class&quot;) &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">SVG().render()</span><br><span class="line"></span><br><span class="line">// what&#x27;s the output?</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>请给出你的答案😄</p>
+<span id="more"></span>
+
+<p>根据当时的统计，43%选择了protocol, 57%选择了class。但真理往往掌握在少数人手中，正确答案是protocol。objc给出的解释是: <strong>circle函数声明在protocol的extension里面，所以不是动态派发，并且类没有实现render函数，所以输出为protocol.</strong> 更为准确的说法应该是: <strong>extension中声明的函数是静态派发，编译的时候就已经确定了调用地址，类无法重写实现。</strong></p>
+<h1 id="派发机制"><a href="#派发机制" class="headerlink" title="派发机制"></a>派发机制</h1><p>在更深入研究Swift函数派发机制之前，我们有必要了解下函数派发的基本知识。函数派发就是CPU在内存中找到该函数地址并调用的过程。函数派发有三种类型: <strong>静态派发，函数表派发和消息派发。</strong>当我们在选择时，需要平衡程序的执行效率和动态性，选择最适合当下情景的派发方式。</p>
+<h2 id="直接派发"><a href="#直接派发" class="headerlink" title="直接派发"></a>直接派发</h2><p>直接派发是三种派发方式中最快的。CPU直接按照函数地址调用，使用最少的指令集，办最快的事情。当编译器对程序进行优化的时候，也常常将函数内联，使之成为直接派发方式，优化执行速度。我们熟知的C++默认使用直接派发方式，在Swift中给函数加上<strong>final</strong>关键字，该函数也会变成直接派发的方式。当然，有利就有弊，直接派发最大的弊病就是没有动态性，不支持继承。</p>
+<h2 id="函数表派发"><a href="#函数表派发" class="headerlink" title="函数表派发"></a>函数表派发</h2><p>这种方式是编译型语言最常见的派发方式，他既保证了动态性也兼顾了执行效率。函数所在的类会维护一个”函数表”，也就是我们熟知的<strong>虚函数表</strong>。该函数表存取了每个函数实现的指针。每个类的vtable在编译时就会被构建，所以与直接派发相比只多出了两个读取的工作: <strong>读取该类的vtable</strong>和<strong>该函数的指针</strong>。理论上说，函数表派发也是一种高效的方式。不过和直接派发相比，编译器对某些含有副作用的函数却无法优化，也是导致函数表派发变慢的原因之一。而且Swift类扩展里面的方法无法动态加入该类的函数表中，只能使用静态派发的方式，这也是函数表派发的缺陷之一。</p>
+<p>我们来看如下代码:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">class Vehiche &#123;</span><br><span class="line">    func run() &#123;&#125;</span><br><span class="line">    func brake() &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">class Car: Vehiche &#123;</span><br><span class="line">    override func brake() &#123;&#125;</span><br><span class="line">    func speedUp() &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>当前情景下，编译器会创建两个函数表: 一个属于<strong>Vehiche</strong>类，另一个属于<strong>Car</strong>类，内存布局如下:</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1559693318/blogImages/Swift_Dispatch/Screen_Shot_2019-06-05_at_12.06.52_PM_n3inuw.png"></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">let car = Car()</span><br><span class="line">car.brake()</span><br></pre></td></tr></table></figure>
+
+<p>当调用函数<strong>brake</strong>时，过程如下:</p>
+<ol>
+<li>读取该对象(0XB00)的vtable.</li>
+<li>读取<strong>brake函数指针</strong>0x222.</li>
+<li>跳转到地址<strong>0X222</strong>，读取函数实现.</li>
+</ol>
+<h2 id="消息派发"><a href="#消息派发" class="headerlink" title="消息派发"></a>消息派发</h2><p>这种派发方式是三种里面最动态的一种方式。由于Swfit使用的依旧是Objc的运行时系统，所以这里的消息派发其实也就是Objc的<strong>Message Passing</strong>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">id returnValue = [someObject messageName:parameter];</span><br></pre></td></tr></table></figure>
+
+<p><strong>someObject</strong>就是接收者，<strong>messageName</strong>就是选择器，选择器和参数一起被称为 “<strong>消息</strong>“。<br>当编译时，编译器会将该消息转换成一条标准的C语言调用：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">id returnValue = objc_msgSend(someObject, @selector(messageName:), parameter);</span><br></pre></td></tr></table></figure>
+
+<p>objc_msgSend函数回一句接收者和选择器的类型来调用适当的方法，它会去接收者所属类中搜索其方法列表，如果能找到，则跳转到对应实现；若找不到，则沿着继承体系继续向上查找，若能找到，则跳转；如果最终还是找不到，那就执行边界情况的操作，例如 <strong>Message forwarding</strong>。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1559694848/blogImages/Swift_Dispatch/Screen_Shot_2019-06-05_at_8.33.29_AM_nwr7rv.png"></p>
+<p>这样做的好处在哪里呢？这种运作方式的关键在于开发者可以在运行时改变函数的行为，也就是我们常说的<strong>Swizzling</strong>。Swizzling经常用来配置服务以及hook某些测试case。</p>
+<div class="note info"><p>KVO就是使用swizzling实现的。</p></div>
+
+<p>这种派发方式的流程步骤似乎很多，所幸的是objc_msgSend会将匹配的结果缓存到<strong>fast map</strong>中，而且每个类都有这样一块缓存；若是之后发送相同的消息，执行速率会很快。</p>
+<h1 id="Swift如何派发函数"><a href="#Swift如何派发函数" class="headerlink" title="Swift如何派发函数"></a>Swift如何派发函数</h1><p>了解了函数派发的基本知识，我们来看看Swift如何处理函数派发以及如何证明该种派发。我们先来看一张总结表:</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1559823253/blogImages/Swift_Dispatch/table_fbcuhz.png"></p>
+<p>从上表中我们可以直观的总结出：<strong>函数的派发方式和以下两点相关联:</strong></p>
+<ol>
+<li>对象类型; 值类型总是使用直接派发(静态派发，因为他们没有继承体系)</li>
+<li>函数声明的位置; 直接在定义中声明和在扩展中(extension)声明</li>
+</ol>
+<p>除此之外，<strong>显式的指定派发方式</strong>也会改变函数其原有的派发方式，例如添加<strong>final或者@objc关键字等等</strong>；以及<strong>编译器对特定函数的优化</strong>，例如将从未被重写的私有函数优化成静态派发。</p>
+<p>下面我们就这四个方面来分析和探讨Swift的派发方式，以及证明其派发方式。</p>
+<h2 id="对象类型"><a href="#对象类型" class="headerlink" title="对象类型"></a>对象类型</h2><p>如上文所述，值类型，也就是struct的对象总是使用静态派发; class对象使用函数表派发(非extension)。请看如下示例:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">class MyClass &#123;</span><br><span class="line">    func testOfClass() &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">struct myStruct &#123;</span><br><span class="line">    func testOfStruct() &#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>现在我们使用如下命令将swift代码转换为SIL(中间码)以便查看其函数派发方式:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">swiftc -emit-silgen -O test.swift</span><br></pre></td></tr></table></figure>
+
+<p>输出结果如下:、</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">sil_vtable MyClass &#123;</span><br><span class="line">  #MyClass.testOfClass!1: (MyClass) -&gt; () -&gt; () : @$s4test7MyClassC0a2OfC0yyF	// MyClass.testOfClass()</span><br><span class="line">  #MyClass.init!allocator.1: (MyClass.Type) -&gt; () -&gt; MyClass : @$s4test7MyClassCACycfC	// MyClass.__allocating_init()</span><br><span class="line">  #MyClass.deinit!deallocator.1: @$s4test7MyClassCfD	// MyClass.__deallocating_deinit</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先swift会为class添加<strong>init</strong>和<b>@objc deinit</b>方法，为struct添加<strong>init</strong>方法。在文件的结尾处就会显示如上代码，它展示了哪些函数是函数表派发的，以及它们的标识符。由于struct类型仅使用静态派发，所以不会显示sil_vtable字样。</p>
+<h2 id="函数声明位置"><a href="#函数声明位置" class="headerlink" title="函数声明位置"></a>函数声明位置</h2><p>函数声明位置的不同也会导致派发方式的不同。在Swift中，我们常常在extension里面添加扩展方法。根据我们之前总结的表格，通常extension中声明的函数都默认使用静态派发。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">protocol MyProtocol &#123;</span><br><span class="line">    func testOfProtocol()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">extension MyProtocol &#123;</span><br><span class="line">    func testOfProtocolInExtension() &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">class MyClass: MyProtocol &#123;</span><br><span class="line">    func testOfClass() &#123;&#125;</span><br><span class="line">    func testOfProtocol() &#123;&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">extension MyClass &#123;</span><br><span class="line">    func testOfClassInExtension() &#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们分别在<strong>protocol</strong>和<strong>class</strong>中声明一个函数，再在其extension中声明一个函数; 最后让类实现协议的一个方法，转换成SIL代码后如下:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">sil_vtable MyClass &#123;</span><br><span class="line">  #MyClass.testOfClass!1: (MyClass) -&gt; () -&gt; () : @$s4test7MyClassC0a2OfC0yyF	// MyClass.testOfClass()</span><br><span class="line">  #MyClass.testOfProtocol!1: (MyClass) -&gt; () -&gt; () : @$s4test7MyClassC0A10OfProtocolyyF	// MyClass.testOfProtocol()</span><br><span class="line">  #MyClass.init!allocator.1: (MyClass.Type) -&gt; () -&gt; MyClass : @$s4test7MyClassCACycfC	// MyClass.__allocating_init()</span><br><span class="line">  #MyClass.deinit!deallocator.1: @$s4test7MyClassCfD	// MyClass.__deallocating_deinit</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">sil_witness_table hidden MyClass: MyProtocol module test &#123;</span><br><span class="line">  method #MyProtocol.testOfProtocol!1: &lt;Self where Self : MyProtocol&gt; (Self) -&gt; () -&gt; () : @$s4test7MyClassCAA0B8ProtocolA2aDP0a2OfD0yyFTW	// protocol witness for MyProtocol.testOfProtocol() in conformance MyClass</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们可以很直观的看到，声明在协议或者类主体中的函数是使用函数表派发的; 而声明在扩展中的函数则是静态派发。</p>
+<div class="note warning"><p>值得注意的是: 当我们在protocol中声明一个函数，并且在protocol的extension中实现了它，而且没有其他类型重写该函数，那么在这种情况下，该函数就是直接派发，算是通用函数。</p></div>
+
+<h2 id="指定派发方式"><a href="#指定派发方式" class="headerlink" title="指定派发方式"></a>指定派发方式</h2><p>给函数添加关键字的修饰也能改变其派发方式。</p>
+<h3 id="final"><a href="#final" class="headerlink" title="final"></a>final</h3><p>添加了final关键字的函数无法被重写，使用直接派发，不会在vtable中出现。并且对Objc runtime不可见。</p>
+<h3 id="dynamic"><a href="#dynamic" class="headerlink" title="dynamic"></a>dynamic</h3><p>值类型和引用类型的函数均可添加dynamic关键字。在Swift5中，给函数添加<strong>dynamic</strong>的作用是为了赋予非objc类和值类型(struct和enum)动态性。我们来看如下代码:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">struct Test &#123;</span><br><span class="line">    dynamic func test() &#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们赋予了test函数动态性。将其转换成SIL中间码后如下:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">// Test.test()</span><br><span class="line">sil hidden [dynamically_replacable] @$s4test4TestVAAyyF : $@convention(method) (Test) -&gt; () &#123;</span><br><span class="line">// %0                                             // user: %1</span><br><span class="line">bb0(%0 : @trivial $Test):</span><br><span class="line">  debug_value %0 : $Test, let, name &quot;self&quot;, argno 1 // id: %1</span><br><span class="line">  %2 = tuple ()                                   // user: %3</span><br><span class="line">  return %2 : $()                                 // id: %3</span><br><span class="line">&#125; // end sil function &#x27;$s4test4TestVAAyyF&#x27;</span><br></pre></td></tr></table></figure>
+
+<p>我们在第二行可以看到<strong>test</strong>函数多了一个“属性”: <strong>dynamically_replacable</strong>, 也就是说添加dynamic关键字就是赋予函数<strong>动态替换</strong>的能力。那什么是动态替换呢? 简而言之就是提供一种途径，比方说，可以将Module A中定义的方法，在Module B中动态替换，如下所示:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// Module A</span><br><span class="line">struct Foo &#123;</span><br><span class="line"> dynamic func bar() &#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">// Module B</span><br><span class="line">extension Foo &#123;</span><br><span class="line">  @_dynamicReplacement(for: bar()0</span><br><span class="line">  func barReplacement() &#123;</span><br><span class="line">    ...</span><br><span class="line">    // Calls previously active implementation of bar()</span><br><span class="line">    bar()</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<div class="note warning"><p>添加dynamic关键字并不代表对Objc可见。</p></div>
+
+<h3 id="objc"><a href="#objc" class="headerlink" title="@objc"></a>@objc</h3><p>该关键字可以将Swift函数暴露给Objc运行时，但并不会改变其派发方式，依旧是函数表派发。举例如下:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">class Test &#123;</span><br><span class="line">    @objc func test() &#123;&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>SIL代码如下:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line"></span><br><span class="line">// @objc Test.test()</span><br><span class="line">sil hidden [thunk] @$s4test4TestCAAyyFTo : $@convention(objc_method) (Test) -&gt; () &#123;</span><br><span class="line">// %0                                             // user: %1</span><br><span class="line">bb0(%0 : @unowned $Test):</span><br><span class="line">  %1 = copy_value %0 : $Test                      // users: %6, %2</span><br><span class="line">  %2 = begin_borrow %1 : $Test                    // users: %5, %4</span><br><span class="line">  // function_ref Test.test()</span><br><span class="line">  %3 = function_ref @$s4test4TestCAAyyF : $@convention(method) (@guaranteed Test) -&gt; () // user: %4</span><br><span class="line">  %4 = apply %3(%2) : $@convention(method) (@guaranteed Test) -&gt; () // user: %7</span><br><span class="line">  end_borrow %2 : $Test                           // id: %5</span><br><span class="line">  destroy_value %1 : $Test                        // id: %6</span><br><span class="line">  return %4 : $()                                 // id: %7</span><br><span class="line">&#125; // end sil function &#x27;$s4test4TestCAAyyFTo&#x27;</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">sil_vtable Test &#123;</span><br><span class="line">  #Test.test!1: (Test) -&gt; () -&gt; () : @$s4test4TestCAAyyF	// Test.test()</span><br><span class="line">  #Test.init!allocator.1: (Test.Type) -&gt; () -&gt; Test : @$s4test4TestCACycfC	// Test.__allocating_init()</span><br><span class="line">  #Test.deinit!deallocator.1: @$s4test4TestCfD	// Test.__deallocating_deinit</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到test方法依旧在“虚函数列表”中，证明其实函数表派发。如果希望test函数使用消息派发，则需要额外添加<strong>dynamic</strong>关键字。</p>
+<h3 id="inline-or-static"><a href="#inline-or-static" class="headerlink" title="@inline or static"></a>@inline or static</h3><p>@inline关键字顾名思义是想告诉编译器将此函数直接派发，但将其转换成SIL代码后，依旧是vtable派发。Static关键字会将函数变为直接派发。</p>
+<h2 id="编译器优化"><a href="#编译器优化" class="headerlink" title="编译器优化"></a>编译器优化</h2><p>Swift会尽可能的去优化函数派发方式。我们上文提到，当一个类声明了一个私有函数时，该函数很可能会被优化为直接派发。这也就是为什么当我们在Swift中使用<strong>target-action</strong>模式时，私有selector会报错的原因(<em>Objective-C 无法获取 #selector 指定的函数</em>)。</p>
+<h2 id="派发总结"><a href="#派发总结" class="headerlink" title="派发总结"></a>派发总结</h2><p>最后我们用一张图总结下Swift中的派发方式:</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1560241856/blogImages/Swift_Dispatch/summary_c0azo8.png"></p>
+<p>从上表可见，我们在类型的主体中声明的函数大都是函数表派发，这也是Swift中最为常见的派发方式；而扩展大都是直接派发；只有再添加了特定关键字后，如**@objc, final, dynamic**后，函数派发方式才会有所改变。除此之外，编译器可能将某些方法优化为直接派发。例如私有函数。</p>
+<h1 id="如何选择派发方式"><a href="#如何选择派发方式" class="headerlink" title="如何选择派发方式"></a>如何选择派发方式</h1><p>讲了这么多函数派发的方式，那对我们有什么用呢？或者说如何选择派发方式呢？</p>
+<p>我总结了两点:</p>
+<ol>
+<li>帮助我们理解一些“奇怪的”行为，例如为何extension中的函数无法被子类继承，为何需要添加@objc甚至是dynamic后才能被重写。</li>
+<li>提供选择类型的条件，例如您的app对性能要求很苛刻，那尽量使用值类型；并且对引用类型方法添加关键字描述。</li>
+</ol>
+<p>总的来说，如何选择还是取决于业务类型。首先要确定使用引用类型还是值类型，因为它们也部分决定了函数的派发方式；之后确定是否给函数添加关键字，例如<b>@objc，final或dynamic</b>，以达到准确描述该函数的目的。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="reward-container">
+  <div>Buy me a coffee</div>
+  <button>
+    赞赏
+  </button>
+  <div class="post-reward">
+      <div>
+        <img src="/images/wechat.jpg" alt="Harry Yan 微信">
+        <span>微信</span>
+      </div>
+
+  </div>
+</div>
+
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>本文作者： </strong>Harry Yan
+  </li>
+  <li class="post-copyright-link">
+      <strong>本文链接：</strong>
+      <a href="https://harryyan.github.io/2021/08/27/Swift%E5%87%BD%E6%95%B0%E6%B4%BE%E5%8F%91%E6%9C%BA%E5%88%B6/" title="Swift函数派发机制">https://harryyan.github.io/2021/08/27/Swift函数派发机制/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+          <div class="post-tags">
+              <a href="/tags/%E5%87%BD%E6%95%B0/" rel="tag"># 函数</a>
+              <a href="/tags/%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/" rel="tag"># 底层原理</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2020/07/23/%E6%A0%BC%E9%B2%81%E5%A4%AB%E7%BB%99%E7%BB%8F%E7%90%86%E4%BA%BA%E7%9A%84%E7%AC%AC%E4%B8%80%E8%AF%BE%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" rel="prev" title="《格鲁夫给经理人的第一课》读书笔记">
+                  <i class="fa fa-chevron-left"></i> 《格鲁夫给经理人的第一课》读书笔记
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2021/11/21/Swift-Concurrency-%E5%88%9D%E6%8E%A2/" rel="next" title="Swift Concurrency 初探">
+                  Swift Concurrency 初探 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Harry Yan</span>
+</div>
+<div class="wordcount">
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-line"></i>
+    </span>
+    <span title="站点总字数">32k</span>
+  </span>
+  <span class="post-meta-item">
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">29 分钟</span>
+  </span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
