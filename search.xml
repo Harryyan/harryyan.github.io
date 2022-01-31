@@ -507,13 +507,9 @@
 <p>第二种是<strong>Detached Task</strong>，他的生命周期和调用它的scope并无绑定关系，可以执行一些低优先级任务，例如下图：</p>
 <p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1643436531/blogImages/Swift_Concurrency/detached_kvrik9.png"></p>
 <p>这种Task按理说也是要我们手动去cancel的，不过例如本地缓存这样的功能，个人感觉不是必须要支持cancel；不过在使用非结构化的Task时，要记住考虑Task取消的情况，这属于一个best practice。</p>
-<h1 id="Swift-Concurrency原理窥探"><a href="#Swift-Concurrency原理窥探" class="headerlink" title="Swift Concurrency原理窥探"></a>Swift Concurrency原理窥探</h1><p>了解了四种Task的使用方式后，不知道你们有没有和我一样的疑问❓那就是<strong>async/await</strong>这种机制是如何实现线程挂起和恢复的？协程标榜无线程切换开销，但看上去依旧发生了线程切换，这似乎存在了矛盾?</p>
-<p>首先我们要了解什么是<strong>上下文切换</strong>:</p>
-<div class="note info"><p>存储和重建CPU的状态 ，因此令多个进程/线程可以分享单一CPU资源的计算过程，就称作上下文切换。</p></div>
-
-<p>我们常说的线程上下文切换开销便是如此。但协程中涉及的线程切换却并不相同，它没有增加CPU的负担，而是从代码层面实现函数挂起和恢复 ，避免了传统线程切换的开销。</p>
+<h1 id="Swift-Concurrency原理窥探"><a href="#Swift-Concurrency原理窥探" class="headerlink" title="Swift Concurrency原理窥探"></a>Swift Concurrency原理窥探</h1><p>了解了四种Task的使用方式后，不知道你们有没有和我一样的疑问❓那就是<strong>async/await</strong>这种机制是如何实现线程挂起和恢复的？详细点说就是：当async函数执行完毕后，如何回到之前的位置，继续执行其后的方法？</p>
 <p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1643510467/blogImages/Swift_Concurrency/swiftui_ztjvfr.png"></p>
-<p>上图是一个简单的异步样例：在view渲染完毕后，触发一个异步函数，获取结果，然后刷新页面。<strong>testAsync</strong>函数会跑在一个工作线程上，但await之后的内容是跑在主线程上的。这就保证了我们能以一种看似同步的方式写异步代码。</p>
+<p>上图是一个简单的异步样例：在view渲染完毕后，触发一个异步函数，获取结果然后刷新页面。<strong>testAsync</strong>函数会跑在一个工作线程上，但await之后的内容是跑在主线程上的。这就保证了我们能以一种看似同步的方式写异步代码。</p>
 <p>但这又是怎么实现的呢？Apple没有开源Swift Concurrency的代码，所以我们无法直接获取它的实现方式；不过好在Kotlin是开源的，而且也支持协程，我们可以参考kotlin的实现方式，来推测下Swift Concurrency的实现。</p>
 <p>总的来讲，Kotlin协程的实现方式是：使用匿名状态机，调度器(Dispatcher)和Continuation实现协程的挂起和恢复。</p>
 <p>我们来看一个简单的例子:</p>
